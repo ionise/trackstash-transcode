@@ -1,3 +1,5 @@
+![trackstash-transcode logo](./assets/trackstash-transocode-logo.png)
+
 # trackstash-transcode
 
 Cross-platform PowerShell module for safe, metadata-preserving audio transcoding with ffmpeg.
