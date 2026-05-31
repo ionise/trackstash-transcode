@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PowerShell modules
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $settings = @{
+            Path = @('trackstash.transcode', 'cli')
+            Recurse = $true
+            Severity = @('Error', 'Warning')
+          }
+          Invoke-ScriptAnalyzer @settings
+
+      - name: Run unit tests
+        shell: pwsh
+        env:
+          TRACKSTASH_SKIP_FFMPEG_CHECK: '1'
+        run: |
+          Invoke-Pester -Path ./tests -ExcludeTag 'Integration' -CI
+
+      - name: Run optional integration tests
+        if: ${{ env.TRACKSTASH_TEST_FFMPEG == '1' }}
+        shell: pwsh
+        env:
+          TRACKSTASH_TEST_FFMPEG: ${{ env.TRACKSTASH_TEST_FFMPEG }}
+        run: |
+          Invoke-Pester -Path ./tests/Integration.Transcode.Tests.ps1 -CI
